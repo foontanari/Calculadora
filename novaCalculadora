@@ -1,0 +1,235 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <ctype.h>
+#include <math.h>
+#include <locale.h>
+
+#define MAX 1000 // Tamanho máximo para a expressão 
+
+// Estrutura para representar um operador e sua prioridade
+typedef struct
+{
+    char operador;
+    unsigned int prioridade;
+
+} Operador;
+
+
+// Processa priodidades dos operadores na expressão
+void processarPrioridades(const char *expressao, Operador *listaOperadores, int *quantidade)
+{
+    // Variável para controlar o nível de prioridade
+    unsigned int nivel_prioridade = 0; 
+    int modulo_aberto = 0;
+    int i = 0; 
+    *quantidade = 0; // Inicializa a quantidade de operadores encontrados
+    while (expressao[i] != '\0') // Loop até o final da expressão
+    { 
+        // Armazena o caractere atual da expressão
+        char atual = expressao[i];    
+        switch (atual)
+        {
+            case ' ': break; // Ignora espaços em branco
+            case '(': nivel_prioridade += 10; break;
+            case ')': nivel_prioridade -= 10; break;
+            case '[': nivel_prioridade += 20; break;
+            case ']': nivel_prioridade -= 20; break;
+            case '{': nivel_prioridade += 30; break;
+            case '}': nivel_prioridade -= 30; break;
+            case '+': case '-':
+                    listaOperadores[*quantidade].operador = atual; // Armazena o operador na lista
+                    listaOperadores[*quantidade].prioridade = nivel_prioridade + 0; // Armazena a prioridade do operador
+                    (*quantidade)++; // Incrementa a quantidade de operadores encontrados
+                break;
+            case '*': case '/': case '%':
+                    listaOperadores[*quantidade].operador = atual; // Armazena o operador na lista
+                    listaOperadores[*quantidade].prioridade = nivel_prioridade + 1; // Armazena a prioridade do operador
+                    (*quantidade)++; // Incrementa a quantidade de operadores encontrados
+                break;
+            case '^':
+                    listaOperadores[*quantidade].operador = atual; // Armazena o operador na lista
+                    listaOperadores[*quantidade].prioridade = nivel_prioridade + 2; // Armazena a prioridade do operador
+                    (*quantidade)++; // Incrementa a quantidade de operadores encontrados
+                break;
+            case '!':
+                {
+                    listaOperadores[*quantidade].operador = atual; // Armazena o operador na lista
+                    listaOperadores[*quantidade].prioridade = nivel_prioridade + 3; // Armazena a prioridade do operador
+                    (*quantidade)++; // Incrementa a quantidade de operadores encontrados
+                }
+                break;
+            case '|':
+                {
+                    // Variável estática para controlar o estado do módulo
+                    if (modulo_aberto == 0) 
+                    {
+                        nivel_prioridade += 2; // Aumenta a prioridade ao abrir o módulo
+                        modulo_aberto = 1; // Marca que o módulo está aberto
+                    } 
+                    else 
+                    {
+                        nivel_prioridade -= 2; // Diminui a prioridade ao fechar o módulo
+                        modulo_aberto = 0; // Marca que o módulo está fechado
+                    }
+                }
+                break;
+            default:
+                // Para outros caracteres, não faz nada
+                break; 
+        }
+        // Move para o próximo caractere da expressão
+        i++; 
+    }
+    
+}
+
+void IniciarCalculadora(char *input)
+{
+    printf("=====Bem-vindo a Calculadora C!!!=====\n");
+    printf("Digite a expressão que deseja calcular: ");
+    scanf("%[^\n]", input); // Lê a expressão do usuário, incluindo espaços em branco
+}
+
+int continuarOperacao(){
+    char resposta;
+    printf("Deseja continuar? (s/n): ");
+    scanf(" %c", &resposta);
+    if (resposta == 's' || resposta == 'S') {
+        // Lógica para continuar a operação
+        printf("Continuando a operação...\n");
+        return 1; // Retorna 1 para indicar que a operação deve continuar
+    } else if (resposta == 'n' || resposta == 'N') {
+        // Lógica para encerrar a operação
+        printf("Encerrando a operação...\n");
+        exit(0); // Encerra o programa
+    } else {
+        printf("Resposta inválida. Por favor, digite 's' para continuar ou 'n' para encerrar.\n");
+        return continuarOperacao(); // Chama a função novamente para obter uma resposta válida
+    }
+}
+
+void lerExpressao(char expressao[MAX]) {
+    printf("Digite a expressão: ");
+    fgets(expressao, MAX, stdin); // Lê a expressão do usuário, incluindo espaços em branco
+}
+
+void parsing(char expressao[], float listaNumeros[], int *qtdNumeros, Operador listaOperadores[], int *qtdOperadores) {
+    int i = 0;
+    *qtdNumeros = 0;
+    *qtdOperadores = 0;
+
+    while (expressao[i] != '\0' && expressao[i] != '\n') {
+
+        // Ignora espaços
+        if (expressao[i] == ' ') {
+            i++;
+            continue;
+        }
+
+        // Se for número ou ponto decimal
+        if (isdigit(expressao[i]) || expressao[i] == '.') {
+            char buffer[20];
+            int j = 0;
+
+            while (isdigit(expressao[i]) || expressao[i] == '.') {
+                buffer[j++] = expressao[i++];
+            }
+            buffer[j] = '\0';
+
+            listaNumeros[(*qtdNumeros)++] = atof(buffer);
+
+        // Se for operador
+        } else {
+            switch (expressao[i]) {
+                case '+':
+                case '-':
+                case '*':
+                case '/':
+                case '%':
+                case '^':
+                case '!':
+                    listaOperadores[*qtdOperadores].operador = expressao[i];
+                    listaOperadores[*qtdOperadores].prioridade = 0;
+                    (*qtdOperadores)++;
+                    break;
+                default:
+                    break; // ignora parênteses e outros caracteres
+            }
+            i++;
+        }
+    }
+}
+float calcular(float listaNumeros[], Operador listaOperadores[], int *qtdNumeros, int *qtdOperadores) {
+    
+    while (*qtdOperadores > 0) {
+
+        // Acha o operador de maior prioridade
+        int maiorIdx = 0;
+        for (int k = 1; k < *qtdOperadores; k++) {
+            if (listaOperadores[k].prioridade > listaOperadores[maiorIdx].prioridade) {
+                maiorIdx = k;
+            }
+        }
+
+        // Pega os dois números ao redor do operador
+        float a = listaNumeros[maiorIdx];
+        float b = listaNumeros[maiorIdx + 1];
+        float resultado = 0;
+
+        switch (listaOperadores[maiorIdx].operador) {
+            case '+': resultado = a + b; break;
+            case '-': resultado = a - b; break;
+            case '*': resultado = a * b; break;
+            case '/':
+                if (b == 0) {
+                    printf("Erro: divisão por zero!\n");
+                    exit(1);
+                }
+                resultado = a / b;
+                break;
+            case '%': resultado = (int)a % (int)b; break;
+            case '^': resultado = pow(a, b); break;
+        }
+
+        // Substitui os dois números pelo resultado
+        listaNumeros[maiorIdx] = resultado;
+
+        // Remove o número extra
+        for (int k = maiorIdx + 1; k < *qtdNumeros - 1; k++)
+            listaNumeros[k] = listaNumeros[k + 1];
+
+        // Remove o operador usado
+        for (int k = maiorIdx; k < *qtdOperadores - 1; k++)
+            listaOperadores[k] = listaOperadores[k + 1];
+
+        (*qtdNumeros)--;
+        (*qtdOperadores)--;
+    }
+
+    return listaNumeros[0];
+}
+
+int main(){
+    setlocale(LC_ALL, "Portuguese");
+
+    char expressao[MAX];
+    Operador listaOperadores[MAX];
+    float listaNumeros[MAX];
+    int qtdNumeros = 0;
+    int qtdOperadores = 0;
+    int quantidade = 0;
+
+    IniciarCalculadora(expressao);
+
+    do {
+        processarPrioridades(expressao, listaOperadores, &quantidade);
+        parsing(expressao, listaNumeros, &qtdNumeros, listaOperadores, &qtdOperadores);
+        float resultado = calcular(listaNumeros, listaOperadores, &qtdNumeros, &qtdOperadores);
+        printf("Resultado: %.2f\n", resultado);
+        lerExpressao(expressao);
+
+    } while (continuarOperacao());
+
+    return 0;
+}
